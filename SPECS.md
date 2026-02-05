@@ -37,3 +37,6 @@
     - Estilos: `css/style.css` (Variables CSS en :root).
     - Scripts: `js/`
     - Imágenes: `img/`
+
+## 7. Agradecimientos
+Gracias a todo el equipo de desarrollo y colaboradores por su dedicación en este proyecto.

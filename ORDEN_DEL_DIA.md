@@ -1,1 +1,3 @@
-Lee atentamente SPECS.md. Genera la estructura base del proyecto: index.html (Grid Layout, Semántico), css/style.css (Variables CSS, Mobile First) y un archivo dummy js/scripts.js. Asegúrate de que el Lighthouse Score potencial sea 100.
+Genera el archivo index.html semántico y responsive siguiendo SPECS.md. Usa Grid Layout para el Home.
+
+STATUS: COMPLETADO

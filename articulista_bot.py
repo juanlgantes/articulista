@@ -2,170 +2,102 @@ import subprocess
 import time
 import os
 import re
+import sys
 
 # --- CONFIGURACIÓN ---
-MI_REPO = "juanlgantes/articulista"
-RAMA_ACTIVA = "main"
+REPO_NAME = "juanlgantes/articulista"
 ARCHIVO_ORDEN = "ORDEN_DEL_DIA.md"
-ARCHIVO_MISION = "MISION.md"
+MAX_ITERACIONES = 1  # Solo 1 vuelta para probar la creación de la web
 
 def log(msg):
-    print(f"[{time.strftime('%H:%M:%S')}] {msg}")
+    print(f"\n[{time.strftime('%H:%M:%S')}] {msg}")
 
-def ejecutar_seguro(cmd_list):
+def ejecutar(cmd_list, check=False):
     try:
-        res = subprocess.run(cmd_list, capture_output=True, text=True)
+        res = subprocess.run(cmd_list, capture_output=True, text=True, cwd=os.getcwd())
         return res.stdout.strip() + "\n" + res.stderr.strip()
     except Exception as e:
-        return f"ERROR: {str(e)}"
+        return f"CRITICAL ERROR: {str(e)}"
 
-def debug_sistema_archivos():
-    """FORENSE: Nos muestra qué demonios hay en el disco."""
-    print("\n🔎 --- DEBUG: RASTREO DE ARCHIVOS ---")
-    subprocess.run(['ls', '-R'], check=False)
-    print("--------------------------------------\n")
-
-def leer_archivo_local(ruta):
-    if os.path.exists(ruta):
-        with open(ruta, 'r') as f: return f.read()
-    return ""
-
-def limpiar_git_lock():
-    lock = os.path.join(".git", "index.lock")
-    if os.path.exists(lock): os.remove(lock)
-
-def sincronizar_repo_local():
-    limpiar_git_lock()
-    subprocess.run(['git', 'pull', 'origin', RAMA_ACTIVA], check=False)
-    subprocess.run(['git', 'add', '.'], check=False)
-    estado = ejecutar_seguro(['git', 'status', '--porcelain'])
-    if estado.strip():
-        subprocess.run(['git', 'commit', '-m', "CEO: Guardando trabajo de Jules"], check=False)
-        subprocess.run(['git', 'push', 'origin', RAMA_ACTIVA], check=False)
-        log("💾 Sincronización Git realizada (Push local).")
-    else:
-        log("💾 Git dice: 'Nada nuevo que guardar'.")
-
-def esperar_y_descargar(session_id, rol):
-    log(f"⏳ Esperando a {rol} (Sesión {session_id})...")
-    intentos = 0
-    racha_silencio = 0 
-    ultimo_mensaje = ""
+def sincronizar_git(mensaje):
+    """Ciclo: Pull Rebase -> Add -> Commit -> Push"""
+    log("🔄 Sincronizando con GitHub...")
+    ejecutar(['git', 'pull', 'origin', 'main', '--rebase'])
+    ejecutar(['git', 'add', '.'])
+    stat = ejecutar(['git', 'commit', '-m', mensaje])
     
-    while intentos < 300: 
-        time.sleep(30)
-        res = ejecutar_seguro(['jules', 'remote', 'pull', '--session', session_id])
-        res_limpia = res.strip()
-        
-        hay_datos_nuevos = (res_limpia != ultimo_mensaje) and ("diff --git" in res or "Downloaded" in res)
-        ultimo_mensaje = res_limpia
-
-        if hay_datos_nuevos:
-            racha_silencio = 0 
-            log(f"   ⚡ ACTIVIDAD REAL. Descargando cambios...")
-            # MOMENTO FORENSE: Ver qué ha llegado
-            debug_sistema_archivos()
+    if "nothing to commit" in stat:
+        log("   ℹ️ Nada nuevo que subir.")
+    else:
+        # Intentamos push, si falla forzamos
+        res_push = ejecutar(['git', 'push', 'origin', 'main'])
+        if "rejected" in res_push:
+            log("⚠️ Push rechazado. Intentando fusión forzada...")
+            ejecutar(['git', 'pull', 'origin', 'main', '--allow-unrelated-histories'])
+            ejecutar(['git', 'push', 'origin', 'main'])
         else:
-            racha_silencio += 1
-            minutos = racha_silencio * 0.5
-            barra = "█" * int(minutos * 2)
-            print(f"   [{intentos}] 🧘 Calma: {minutos} min / 3.0 min {barra}")
-            
-            if minutos >= 3.0: 
-                log(f"\n✅ Turno finalizado (Timeout).")
-                return True
-            if "Ready for review" in res and racha_silencio >= 2:
-                log(f"\n✅ Turno finalizado (Confirmado).")
-                return True
+            log("   ✅ Git Push completado.")
+
+def esperar_y_aplicar(session_id):
+    log(f"⏳ Jules está construyendo la web (Sesión {session_id})...")
+    intentos = 0
+    max_intentos = 60 # 30 minutos (el código web puede tardar más que un texto)
+    
+    while intentos < max_intentos:
+        time.sleep(30)
+        res = ejecutar(['jules', 'remote', 'pull', '--session', session_id, '--apply'])
+        
+        if "Patch applied successfully" in res or "Applied" in res:
+            log(f"🎉 ¡ÉXITO! Estructura web recibida.")
+            return True
+        
+        if "No such file" in res:
+            sys.stdout.write(".") 
+            sys.stdout.flush()
+        else:
+            print(f"[{intentos}] Jules Status: {res[:50]}...")
         intentos += 1
+        
+    log("❌ TIEMPO AGOTADO.")
     return False
 
-def turno_arquitecto():
-    log("\n" + "="*40)
-    log("🏛️ TURNO: ARQUITECTO")
-    log("="*40)
-    
-    sincronizar_repo_local()
-    mision = leer_archivo_local(ARCHIVO_MISION)
-    orden_actual = leer_archivo_local(ARCHIVO_ORDEN)
-    
-    instrucciones = f"""
-    ERES EL ARQUITECTO.
-    
-    ESTADO ACTUAL (Leído del disco):
-    --------------------------------------------------
-    {orden_actual[:2000]}
-    --------------------------------------------------
-    
-    TU TAREA:
-    1. Si ves "STATUS: COMPLETADO" (o vacío), escribe la SIGUIENTE tarea técnica.
-    2. Si hay tarea pendiente, no hagas nada.
-    
-    IMPORTANTE:
-    - NO CREES CARPETAS para el archivo de órdenes.
-    - Escribe el archivo '{ARCHIVO_ORDEN}' en la RAÍZ del directorio actual.
-    - Usa: `echo "CONTENIDO" > {ARCHIVO_ORDEN}` si es necesario para asegurar la ruta.
-    """
-    instrucciones_linea = instrucciones.replace('\n', ' ').replace('  ', '')
-    
-    salida = ejecutar_seguro(['jules', 'remote', 'new', '--repo', MI_REPO, '--session', instrucciones_linea])
-    match = re.search(r"ID:\s*(\d+)", salida)
-    if not match: return
-    
-    if esperar_y_descargar(match.group(1), "ARQUITECTO"):
-        sincronizar_repo_local()
-
-def turno_ingeniero():
-    log("\n" + "="*40)
-    log("🔨 TURNO: INGENIERO")
-    log("="*40)
-    
-    sincronizar_repo_local()
-    orden_actual = leer_archivo_local(ARCHIVO_ORDEN)
-    
-    # DEBUG: ¿Qué ve el ingeniero?
-    print(f"👀 CONTENIDO QUE VE EL INGENIERO:\n---\n{orden_actual[:200]}\n---")
-
-    if "STATUS: COMPLETADO" in orden_actual:
-        log("⚠️ El Arquitecto no ha puesto tarea nueva. Saltando turno...")
-        return
-    if not orden_actual.strip():
-        log("⚠️ No hay órdenes (Archivo vacío o no existe). Saltando turno...")
-        return
-
-    instrucciones = f"""
-    ERES EL INGENIERO.
-    
-    TU ORDEN:
-    --------------------------------------------------
-    {orden_actual[:2000]}
-    --------------------------------------------------
-    
-    TU TAREA:
-    1. Genera los archivos solicitados (HTML/CSS) EN LA RAÍZ (o carpetas css/js según corresponda).
-    2. AL FINALIZAR, añade "\nSTATUS: COMPLETADO" a '{ARCHIVO_ORDEN}'.
-    """
-    instrucciones_linea = instrucciones.replace('\n', ' ').replace('  ', '')
-    
-    salida = ejecutar_seguro(['jules', 'remote', 'new', '--repo', MI_REPO, '--session', instrucciones_linea])
-    match = re.search(r"ID:\s*(\d+)", salida)
-    if not match: return
-    
-    if esperar_y_descargar(match.group(1), "INGENIERO"):
-        sincronizar_repo_local()
+def leer_orden():
+    if os.path.exists(ARCHIVO_ORDEN):
+        with open(ARCHIVO_ORDEN, 'r') as f:
+            return f.read().strip()
+    return "Revisar estado del proyecto"
 
 def main():
-    log(f"🚀 CEO V33 (THE FORENSIC): {MI_REPO}")
-    debug_sistema_archivos() # Ver estado inicial
+    log(f"🚀 CEO V46 (ARTICULISTA BUILDER) - {REPO_NAME}")
     
-    while True:
-        turno_arquitecto()
-        log("⏳ Relevo (10s)...")
-        time.sleep(10)
+    # 0. Sincronización preventiva (para subir el SPECS.md si no se ha subido)
+    sincronizar_git("Sync inicial antes de empezar")
+
+    iteracion = 1
+    mision = leer_orden()
+    
+    log(f"📋 Misión detectada: {mision}")
+    log("---------------------------------------------------")
+
+    # 1. Lanzar a Jules
+    salida_new = ejecutar(['jules', 'new', mision])
+    
+    # 2. Capturar ID
+    match = re.search(r"ID:\s+(\d+)", salida_new)
+    
+    if match:
+        session_id = match.group(1)
+        log(f"🏗️  Jules ha empezado a programar. ID: {session_id}")
         
-        turno_ingeniero()
-        log("💤 Ciclo completo (10s)...")
-        time.sleep(10)
+        # 3. Esperar resultado
+        if esperar_y_aplicar(session_id):
+            # 4. Sincronizar resultado
+            sincronizar_git(f"Jules: Estructura Web v1.0 ({session_id})")
+            log(f"✅ Misión cumplida. Revisa los archivos .html y .css creados.")
+        else:
+            log("⚠️ La tarea falló.")
+    else:
+        log(f"❌ Error al lanzar tarea. Salida:\n{salida_new}")
 
 if __name__ == "__main__":
     main()

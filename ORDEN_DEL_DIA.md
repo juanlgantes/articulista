@@ -1,0 +1,1 @@
+continua completando y mejorando lo que dice MISION.md

@@ -51,5 +51,20 @@ The loop has optimized the agent's behavior from a "Command Executor" to a "Cont
 *   **Reflect (The Ghost in the Machine)**: Persistent memory files (`ORDEN_DEL_DIA.md`) are double-edged swords. If not cleared, the agent inherits "false memories" of completion. 
     *   **Rule**: Always verify that the input pipe is empty/clean before starting a fresh daisy-chain sequence.
 
+### 🟢 Round 6: Alignment & Single-Tap Convergence
+*   **Context**: User identified that the "Double Tap" split was artificial and prone to sync errors. Requested a return to "Single Tap" (One prompt per cycle).
+*   **Generate**: Merge Worker and Planner into a single atomic instruction.
+*   **Select**: `articulista_bot_v55.py` implements a unified prompt that demands Execution AND Planning in the same output.
+*   **Reflect (The Reality Check)**:
+    *   **Atomic Units**: Agentic CLI tools work best as atomic "Input -> Process -> Output" text processors. Complexity should reside in the *Prompt*, not in the orchestration script.
+    *   **Environment Blindness**: Python scripts in WSL do not inherit the interactive shell's `PATH`. Absolute paths (`/home/.../bin/jules`) are the only fail-safe.
+    *   **Constraint Engineering**: To prevent low-quality "rushed" code, the prompt must explicitly forbid "completing the project" and demand "one logical step at a time".
+
+### 🟢 Round 7: Session Independence & Continuity
+*   **Context**: User clarified that `MISION.md` is only for the genesis. Any subsequent run (even after a restart) must resume from `ORDEN_DEL_DIA.md` to avoid resetting progress.
+*   **Generate**: Implement "Smart Resume" logic.
+*   **Select**: Logic updated to check `ORDEN_DEL_DIA.md` existence *before* checking Cycle #1 condition.
+*   **Reflect (The Persistence of Memory)**: The agent's "First Cycle" is not necessarily the Project's "First Step". The filesystem state (`ORDEN_DEL_DIA`) is the only source of truth for time, not the variable `i=1`.
+
 ---
 *Generated via Internal Recursive Scan | 2026-02-06*

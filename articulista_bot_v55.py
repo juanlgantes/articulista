@@ -8,7 +8,7 @@ import shutil
 # --- CONFIGURACIÓN ---
 REPO_NAME = "juanlgantes/articulista"
 MAX_CICLOS = 4
-JULES_CMD = "jules"  # Si falla, cambiar por ruta absoluta ej: "/home/user/.nvm/.../bin/jules"
+JULES_CMD = "/home/juanlgantes/.nvm/versions/node/v20.20.0/bin/jules"
 
 def log(msg):
     print(f"\n[{time.strftime('%H:%M:%S')}] {msg}")
@@ -40,9 +40,12 @@ def sincronizar_git(mensaje):
 def esperar_a_jules(session_id):
     """Polling inteligente con timeout."""
     log(f"⏳ Esperando entrega de sesión {session_id}...")
-    intentos = 0
+    start_time = time.time()
     # 60 intentos * 30 seg = 30 minutos máximo de espera
     while intentos < 60:
+        elapsed = int(time.time() - start_time)
+        sys.stdout.write(f"\r⏳ Esperando a Jules... Tiempo transcurrido: {elapsed}s")
+        sys.stdout.flush()
         time.sleep(30)
         res = ejecutar([JULES_CMD, 'remote', 'pull', '--session', session_id, '--apply'])
         
@@ -73,31 +76,33 @@ def generar_mision_unificada(ciclo_actual):
     """
     SINGLE TAP: Una única misión que incluye EJECUCIÓN + PLANIFICACIÓN.
     """
-    # 1. Recuperar contexto
-    if ciclo_actual == 1:
+    # 1. Recuperar contexto (Lógica Smart Resume)
+    # Si existe ORDEN_DEL_DIA con contenido, SIEMPRE tiene prioridad (Continuidad del Proyecto).
+    if os.path.exists("ORDEN_DEL_DIA.md") and os.path.getsize("ORDEN_DEL_DIA.md") > 0:
+        fuente = "ORDEN_DEL_DIA.md"
+        with open(fuente, "r", encoding="utf-8") as f: instruccion = f.read()
+    elif ciclo_actual == 1:
         fuente = "MISION.md"
         if os.path.exists(fuente):
             with open(fuente, "r", encoding="utf-8") as f: instruccion = f.read()
         else:
             instruccion = "INICIO PROYECTO: Estructura inicial y configuración."
     else:
-        fuente = "ORDEN_DEL_DIA.md"
-        if os.path.exists(fuente) and os.path.getsize(fuente) > 0:
-            with open(fuente, "r", encoding="utf-8") as f: instruccion = f.read()
-        else:
-            return "FATAL_ERROR_NO_PLAN"
+        return "FATAL_ERROR_NO_PLAN"
 
     log(f"📄 Fuente de Misión: {fuente}")
 
     # 2. Prompt Maestro
     prompt = (
-        f"MISIÓN ACTUAL:\n{instruccion}\n\n"
-        "--- INSTRUCCIONES OBLIGATORIAS (Protocolo Single-Tap) ---\n"
-        "1. EJECUTA: Escribe todo el código necesario para cumplir la misión.\n"
-        "2. PLANIFICA: Al terminar, DEBES escribir/sobrescribir el archivo 'ORDEN_DEL_DIA.md'.\n"
-        "   - Contenido: Instrucciones técnicas precisas para el SIGUIENTE ciclo.\n"
+        f"MISIÓN TÉCNICA:\n{instruccion}\n\n"
+        "--- PROTOCOLO DE CALIDAD (SINGLE TAP) ---\n"
+        "1. EJECUCIÓN: Implementa SOLAMENTE el siguiente paso lógico. NO intentes terminar todo el proyecto de golpe.\n"
+        "   - PRINCIPIO: Calidad > Cantidad.\n"
+        "   - PRINCIPIO: Cero Alucinaciones.\n"
+        "2. PLANIFICACIÓN OBLIGATORIA: Al terminar, DEBES escribir/sobrescribir el archivo 'ORDEN_DEL_DIA.md'.\n"
+        "   - Contenido: Instrucciones técnicas precisas para el SIGUIENTE ciclo (lo que falta por hacer).\n"
         "   - Si el proyecto terminó, escribe 'STATUS: COMPLETADO'.\n"
-        "   - ⚠️ SI NO ESCRIBES ESTE ARCHIVO, EL PROYECTO MORIRÁ.\n\n"
+        "   - ⚠️ IMPORTANTE: Si no escribes este archivo con el plan futuro, el ciclo se romperá.\n\n"
         f"[Contexto Histórico / Errores Previos]\n{leer_trt_log()}"
     )
     return prompt

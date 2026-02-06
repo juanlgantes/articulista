@@ -6,154 +6,234 @@ import sys
 
 # --- CONFIGURACIÓN ---
 REPO_NAME = "juanlgantes/articulista"
-ARCHIVO_ORDEN = "ORDEN_DEL_DIA.md"
-ARCHIVO_SPECS = "SPECS.md"
+MAX_CICLOS = 4  # Cuántas veces quieres que piense y trabaje seguido antes de parar
 
 def log(msg):
     print(f"\n[{time.strftime('%H:%M:%S')}] {msg}")
 
 def ejecutar(cmd_list):
+    """Ejecuta comandos de terminal de forma silenciosa pero efectiva."""
     try:
         res = subprocess.run(cmd_list, capture_output=True, text=True, cwd=os.getcwd())
-        return res.stdout.strip() + "\n" + res.stderr.strip()
+        return res.stdout.strip()
     except Exception as e:
-        return f"ERROR: {str(e)}"
+        log(f"CRITICAL ERROR EXECUTING COMMAND: {e}")
+        return str(e)
 
-def leer_archivo(ruta):
-    if os.path.exists(ruta):
-        with open(ruta, 'r') as f: return f.read().strip()
-    return ""
-
-def escribir_archivo(ruta, contenido):
-    with open(ruta, 'w') as f: f.write(contenido)
+def hay_cambios_locales():
+    """Detecta si Jules ha creado algo nuevo en el disco."""
+    estado = ejecutar(['git', 'status', '--porcelain'])
+    return len(estado) > 0
 
 def sincronizar_git(mensaje):
-    """El ciclo sagrado de seguridad."""
-    log("🔄 GIT: Sincronizando...")
-    ejecutar(['git', 'pull', 'origin', 'main', '--rebase'])
+    """
+    CRÍTICO: Sube los cambios a GitHub.
+    Esto es OBLIGATORIO para que en la siguiente tarea Jules vea el trabajo anterior.
+    """
+    if not hay_cambios_locales():
+        log("ℹ️ No hay cambios para subir. Saltando sync.")
+        return
+
+    log("🔄 Sincronizando GitHub para que Jules vea el nuevo estado...")
     ejecutar(['git', 'add', '.'])
-    stat = ejecutar(['git', 'commit', '-m', mensaje])
-    if "nothing to commit" not in stat:
-        ejecutar(['git', 'push', 'origin', 'main'])
-        log("   ✅ Guardado en la nube.")
-    else:
-        log("   ℹ️ Sin cambios locales.")
+    ejecutar(['git', 'commit', '-m', mensaje])
+    ejecutar(['git', 'push', 'origin', 'main'])
+    log("✅ Estado actualizado en la nube.")
 
 def esperar_a_jules(session_id):
-    """La espera activa (Ralph Wiggum Loop)."""
-    log(f"⏳ Esperando resultados de Sesión {session_id}...")
+    """Espera a que Jules entregue el paquete."""
+    log(f"⏳ Esperando entrega de sesión {session_id}...")
     intentos = 0
-    # Damos más tiempo porque crear webs es complejo
-    while intentos < 60: 
+    while intentos < 80: # 40 minutos max
         time.sleep(30)
         res = ejecutar(['jules', 'remote', 'pull', '--session', session_id, '--apply'])
         
         if "Patch applied successfully" in res or "Applied" in res:
-            log(f"🎉 ¡CÓDIGO RECIBIDO! Jules ha entregado.")
+            log("🎉 Paquete recibido.")
             return True
         
         if "No such file" in res:
             sys.stdout.write(".") 
             sys.stdout.flush()
-        else:
-            # Si Jules da feedback de error, lo mostramos
-            if "error" in res.lower():
-                log(f"⚠️ Jules Error: {res}")
+        
         intentos += 1
-    
-    log("❌ TIEMPO AGOTADO.")
     return False
 
-def turno_arquitecto():
+def obtener_git_hash():
+    """Devuelve el hash del último commit (HEAD)."""
+    return ejecutar(['git', 'rev-parse', 'HEAD'])
+
+def carpeta_tiene_contenido():
+    """Verifica si hay algo más que la carpeta .git y el propio script."""
+    # Lista todo excluyendo .git y el archivo actual
+    archivos = [f for f in os.listdir('.') 
+                if f != '.git' and f != os.path.basename(__file__)]
+    return len(archivos) > 0
+
+def leer_trt_log():
+    """Lee el archivo de reflexión TRT para inyectar contexto histórico."""
+    log_path = "TRT_REFLECTION_LOG.md"
+    if os.path.exists(log_path):
+        try:
+            with open(log_path, "r", encoding="utf-8") as f:
+                return f.read()
+        except:
+            return ""
+    return ""
+
+# ==============================================================================
+#  CEREBRO DINÁMICO (Lógica de Continuidad por Cambios)
+# ==============================================================================
+
+def generar_mision_worker(ciclo_actual, hash_anterior):
     """
-    CEREBRO: Analiza qué falta y decide la siguiente tarea.
-    No alucina tareas, mira los archivos reales.
+    Fase 1: EL TRABAJADOR. Ejecuta la misión core.
+    PROHIBIDO: Decidir el siguiente paso (ORDEN_DEL_DIA).
     """
-    log("🧠 TURNO: ARQUITECTO (Analizando proyecto...)")
+    log("👷 [WORKER] Iniciando Fase de Construcción...")
     
-    # 1. Comprobación de existencia de archivos clave
-    tiene_specs = os.path.exists(ARCHIVO_SPECS)
-    tiene_index = os.path.exists("index.html")
-    tiene_css = os.path.exists("css/style.css")
-    
-    orden_actual = leer_archivo(ARCHIVO_ORDEN)
-    
-    # LÓGICA DE DECISIÓN
-    nueva_orden = ""
-    
-    if not tiene_specs:
-        log("   ⚠️ Faltan las especificaciones.")
-        return False # No podemos trabajar sin specs
+    # Check 1: ¿Hay algo sobre lo que trabajar?
+    if not carpeta_tiene_contenido():
+        log("❌ La carpeta parece estar vacía (solo .git o bot).")
+        return "La carpeta está vacía. Crea un archivo SPECS.md con el plan del proyecto y una estructura inicial adecuada."
+
+    # Check 2: Control de Progreso (Evidencia de Cambios)
+    if ciclo_actual > 1:
+        hash_actual = obtener_git_hash()
+        log(f"🔎 [Check Progreso] Hash Anterior: {hash_anterior[:7]} | Hash Actual: {hash_actual[:7]}")
         
-    if not tiene_index:
-        log("   ⚠️ Falta index.html. Prioridad: Estructura.")
-        nueva_orden = "Genera el archivo index.html semántico y responsive siguiendo SPECS.md. Usa Grid Layout para el Home."
-        
-    elif not tiene_css:
-        log("   ⚠️ Falta CSS. Prioridad: Estilo.")
-        nueva_orden = "Genera css/style.css siguiendo la Guía de Estilo de SPECS.md. Define variables CSS en :root."
-        
-    elif "STATUS: COMPLETADO" in orden_actual:
-        log("   ✅ Todo parece en orden. Esperando nuevas directrices humanas.")
-        return False
+        if hash_actual == hash_anterior:
+            log("🛑 No se detectaron nuevos commits del ciclo anterior.")
+            return "STATUS: COMPLETADO"
+        else:
+            log("✅ Se detectaron cambios. El proyecto avanza.")
+
+    # 1. Determinar Fuente de la Misión
+    if ciclo_actual == 1:
+        if os.path.exists("MISION.md"):
+            try:
+                with open("MISION.md", "r", encoding="utf-8") as f:
+                    core_mission = f.read()
+            except:
+                core_mission = "Lee SPECS.md y comienza el proyecto."
+        else:
+             core_mission = "No existe MISION.md. Analiza el estado actual y propón el mejor siguiente paso."
+        log(f"📄 Fuente: MISION.md (Ciclo {ciclo_actual})")
     else:
-        # Si hay una orden manual pendiente, la respetamos
-        log(f"   📋 Orden vigente detectada: {orden_actual[:40]}...")
-        return True
+        if os.path.exists("ORDEN_DEL_DIA.md"):
+            try:
+                with open("ORDEN_DEL_DIA.md", "r", encoding="utf-8") as f:
+                    core_mission = f.read()
+            except:
+                core_mission = "Continúa donde lo dejaste en el ciclo anterior."
+        else:
+            core_mission = "No existe ORDEN_DEL_DIA.md. Continúa lógicamente con la mejora del proyecto."
+        log(f"📄 Fuente: ORDEN_DEL_DIA.md (Ciclo {ciclo_actual})")
 
-    # Si el arquitecto decidió una nueva orden, la escribimos
-    if nueva_orden and nueva_orden not in orden_actual:
-        log(f"   📝 ARQUITECTO ESCRIBE ORDEN: {nueva_orden}")
-        escribir_archivo(ARCHIVO_ORDEN, nueva_orden)
-        return True
+    # 2. Constraints del Worker (Prohibido planificar)
+    worker_constraints = (
+        "\n\n[ROL: WORKER / CONSTRUCTOR]\n"
+        "Tu tarea es EJECUTAR lo solicitado en la misión. Enfócate puramente en código e implementación.\n"
+        "PROHIBIDO: No toques ni crees el archivo 'ORDEN_DEL_DIA.md'. De eso se encarga el Red Team después de ti.\n"
+        "Solo genera el código funcional necesario."
+    )
+
+    quality_constitution = (
+        "\n\n[CONSTITUCIÓN DE CALIDAD]\n"
+        "1. CALIDAD > CANTIDAD.\n"
+        "2. CERO ALUCINACIONES: Si no sabes algo, para.\n"
+        "3. DETERMINISMO: Usa soluciones probadas."
+    )
     
-    return True
+    trt_context = leer_trt_log()
+    trt_section = f"\n\n[MEMORIA TRT]\n{trt_context}" if trt_context else ""
 
-def turno_ingeniero():
+    return f"MISIÓN:\n{core_mission}\n{worker_constraints}\n{quality_constitution}\n{trt_section}"
+
+def generar_mision_red_team():
     """
-    BRAZO: Ejecuta la orden que haya en el archivo.
+    Fase 2: EL JUEZ (RED TEAM). Revisa y Planifica.
+    OBLIGATORIO: Criticar y escribir ORDEN_DEL_DIA.md.
     """
-    log("🔨 TURNO: INGENIERO (Ejecutando...)")
+    log("⚖️ [RED TEAM] Iniciando Fase de Auditoría y Planificación...")
     
-    mision = leer_archivo(ARCHIVO_ORDEN)
-    if not mision or "STATUS: COMPLETADO" in mision:
-        log("   💤 Nada que construir.")
-        return
+    return (
+        "ACTÚA COMO UN AUDITOR DE CÓDIGO Y ARQUITECTO (RED TEAM).\n"
+        "Acabas de recibir código nuevo del 'Worker'. Tu trabajo es:\n"
+        "1. CRITICAR: Busca errores de seguridad, bugs, o mala calidad en los últimos cambios. CORRÍGELOS si existen.\n"
+        "2. PLANIFICAR: Escribe/Actualiza el archivo 'ORDEN_DEL_DIA.md'.\n"
+        "   - Contenido de ORDEN_DEL_DIA.md: Lista detallada de qué se debe hacer EXACTAMENTE en la siguiente sesión.\n"
+        "   - Sé técnico y específico.\n"
+        "\n[MEMORIA TRT IMPLACABLE]\n" + leer_trt_log()
+    )
 
-    # Lanzar a Jules
+def ejecutar_fase(nombre, mision):
+    """Ejecuta una fase (Worker o Red Team) en Jules."""
+    log(f"🚀 Lanzando {nombre}...")
     salida = ejecutar(['jules', 'new', mision])
     match = re.search(r"ID:\s+(\d+)", salida)
     
     if match:
         session_id = match.group(1)
-        log(f"   🚀 Jules trabajando. ID: {session_id}")
-        
+        log(f"⏳ Esperando a {nombre} (ID: {session_id})...")
         exito = esperar_a_jules(session_id)
-        if exito:
-            # Firmamos la orden como completada
-            escribir_archivo(ARCHIVO_ORDEN, f"{mision}\n\nSTATUS: COMPLETADO")
-            sincronizar_git(f"Jules: {mision[:30]}...")
+        return exito
     else:
-        log(f"   ❌ Error lanzando Jules: {salida}")
+        log(f"❌ Error lanzando {nombre}: {salida}")
+        return False
+
+# ==============================================================================
+#  BUCLE PRINCIPAL (DOUBLE TAP)
+# ==============================================================================
 
 def main():
-    log(f"🤖 CEO V47 (ARQUITECTURA COMPLETA) - {REPO_NAME}")
+    log(f"🤖 CEO V53 - ARQUITECTURA DOUBLE TAP (WORKER + RED TEAM) - {REPO_NAME}")
     
-    if not os.path.exists(".git"):
-        log("❌ ERROR: Ejecuta en la raíz del repo.")
-        return
-
-    # Ciclo de vida: Arquitecto -> Ingeniero -> Dormir
-    # Hacemos 2 pases para asegurar (Estructura -> Estilos)
-    for i in range(2):
-        hay_trabajo = turno_arquitecto()
-        if hay_trabajo:
-            turno_ingeniero()
-        else:
+    # 1. Asegurar estado inicial limpio
+    ejecutar(['git', 'pull', 'origin', 'main', '--rebase'])
+    
+    ciclo_actual = 1
+    # Hash inicial antes de empezar a trabajar
+    hash_al_inicio_del_ciclo = obtener_git_hash() 
+    
+    while ciclo_actual <= MAX_CICLOS:
+        log(f"\n🎬 === CICLO {ciclo_actual} ===")
+        
+        # Guardamos hash base para comparación futura
+        current_hash_for_next_check = obtener_git_hash()
+        
+        # --- FASE 1: WORKER ---
+        mision_worker = generar_mision_worker(ciclo_actual, hash_al_inicio_del_ciclo)
+        
+        if mision_worker == "STATUS: COMPLETADO":
+            log("🏆 El Proyecto parece terminado.")
             break
-        time.sleep(5)
+            
+        exito_worker = ejecutar_fase("WORKER", mision_worker)
+        
+        if not exito_worker:
+            log("⚠️ El Worker falló. Saltando Red Team y reintentando ciclo...")
+            continue
+            
+        # Sincronizamos tras el Worker para que el Red Team vea los cambios
+        sincronizar_git(f"Jules V53 [Worker]: Ciclo {ciclo_actual}")
+        
+        # --- FASE 2: RED TEAM ---
+        mision_red_team = generar_mision_red_team()
+        exito_red_team = ejecutar_fase("RED TEAM", mision_red_team)
+        
+        if exito_red_team:
+            sincronizar_git(f"Jules V53 [Red Team]: Ciclo {ciclo_actual} - Audit & Plan")
+            
+            # Actualizamos hash para el siguiente ciclo
+            hash_al_inicio_del_ciclo = current_hash_for_next_check
+            time.sleep(10)
+        else:
+            log("⚠️ El Red Team falló. Revisar logs.")
 
-    log("\n🏁 Ciclo finalizado. Revisa los resultados.")
+        ciclo_actual += 1
+
+    log("\n🏁 PROCESO FINALIZADO.")
 
 if __name__ == "__main__":
     main()

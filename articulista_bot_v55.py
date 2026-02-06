@@ -13,17 +13,32 @@ JULES_CMD = "/home/juanlgantes/.nvm/versions/node/v20.20.0/bin/jules"
 def log(msg):
     print(f"\n[{time.strftime('%H:%M:%S')}] {msg}")
 
-def ejecutar(cmd_list):
+class CommandResult:
+    def __init__(self, stdout, stderr, returncode):
+        self.stdout = stdout.strip()
+        self.stderr = stderr.strip()
+        self.returncode = returncode
+        self.success = (returncode == 0)
+
+def ejecutar(cmd_list, fatal=False):
+    """Ejecuta un comando y devuelve un CommandResult. Si fatal=True, aborta el script en error."""
     try:
-        # Reemplazar 'jules' por el comando configurado si es el primer argumento
         if cmd_list[0] == 'jules':
             cmd_list[0] = JULES_CMD
             
         res = subprocess.run(cmd_list, capture_output=True, text=True, cwd=os.getcwd())
-        return res.stdout.strip()
+        result = CommandResult(res.stdout, res.stderr, res.returncode)
+        
+        if fatal and not result.success:
+            log(f"🛑 ERROR FATAL ejecutando {cmd_list}")
+            log(f"📝 STDERR: {result.stderr}")
+            sys.exit(1)
+            
+        return result
     except Exception as e:
         log(f"🔥 CRITICAL ERROR executing {cmd_list}: {e}")
-        return ""
+        if fatal: sys.exit(1)
+        return CommandResult("", str(e), 1)
 
 def normalizar_lineas_lf():
     """Convierte CRLF a LF en archivos de texto del proyecto para evitar errores de patch."""
@@ -43,16 +58,18 @@ def normalizar_lineas_lf():
                     log(f"⚠️ No se pudo normalizar {file}: {e}")
 
 def sincronizar_git(mensaje):
-    """Sube cambios y ORDEN_DEL_DIA."""
-    if not ejecutar(['git', 'status', '--porcelain']):
+    """Sube cambios y ORDEN_DEL_DIA. Bloqueante: si falla el push, el bot para."""
+    status = ejecutar(['git', 'status', '--porcelain'])
+    if not status.stdout:
         log("ℹ️ No hay cambios para subir.")
-        return
+        return True
 
     log("🔄 Sincronizando GitHub...")
-    ejecutar(['git', 'add', '.'])
-    ejecutar(['git', 'commit', '-m', mensaje])
-    ejecutar(['git', 'push', 'origin', 'main'])
+    ejecutar(['git', 'add', '.'], fatal=True)
+    ejecutar(['git', 'commit', '-m', mensaje], fatal=False) # Commit puede fallar si no hay cambios reales
+    res_push = ejecutar(['git', 'push', 'origin', 'main'], fatal=True)
     log("✅ Estado actualizado en la nube.")
+    return True
 
 def esperar_a_jules(session_id):
     """Polling robusto: Espera a que el estado sea 'Completed' antes de bajar nada."""
@@ -63,7 +80,7 @@ def esperar_a_jules(session_id):
         elapsed = int(time.time() - start_time)
         
         # 1. Consultar la lista de sesiones
-        status_raw = ejecutar([JULES_CMD, 'remote', 'list', '--session'])
+        status_raw = ejecutar([JULES_CMD, 'remote', 'list', '--session']).stdout
         
         # 2. Verificar si nuestra sesión ya está en 'Completed'
         # Buscamos el ID y que en esa misma línea aparezca 'Completed'
@@ -72,14 +89,14 @@ def esperar_a_jules(session_id):
             log("⏳ Esperando buffer de seguridad (30s) para confirmar inactividad y sincronía...")
             time.sleep(30)
             
-            log("🔄 Ejecutando PULL final para traer todos los cambios...")
             res = ejecutar([JULES_CMD, 'remote', 'pull', '--session', session_id, '--apply'])
             
-            if "Patch applied successfully" in res or "Applied" in res:
+            if "Patch applied successfully" in res.stdout or "Applied" in res.stdout:
                 log("🎉 Paquete completo recibido y aplicado.")
                 return True
             else:
-                log(f"❌ ERROR: El pull falló (conflicto o estado inconsistente): {res}")
+                log(f"❌ ERROR: El pull falló (conflicto o estado inconsistente).")
+                log(f"📝 Detalle: {res.stdout} {res.stderr}")
                 return False 
         
         # 3. Mostrar progreso
@@ -147,7 +164,7 @@ def main():
         log(f"❌ ERROR: No encuentro '{JULES_CMD}'. Edita la variable JULES_CMD en el script con la ruta absoluta (ej: `which jules`).")
         return
 
-    ejecutar(['git', 'pull', 'origin', 'main', '--rebase'])
+    ejecutar(['git', 'pull', 'origin', 'main', '--rebase'], fatal=True)
     
     ciclo = 1
     while ciclo <= MAX_CICLOS:
@@ -166,7 +183,7 @@ def main():
             
         # 2. Lanzar Jules
         log(f"🚀 Enviando a Jules...")
-        salida = ejecutar([JULES_CMD, 'new', mision])
+        salida = ejecutar([JULES_CMD, 'new', mision]).stdout
         match = re.search(r"ID:\s+(\d+)", salida)
         
         if not match:

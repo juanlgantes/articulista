@@ -1,11 +1,11 @@
 # ORDEN DEL DÍA
 
-ID: 003
-Titulo: Redacción de Contenido - Parte 2
+ID: 004
+Titulo: Redacción de Contenido - Parte 3 y Navegación
 Prioridad: Alta
-Descripción: Redactar el contenido único y optimizado para SEO para los siguientes 3 artículos.
+Descripción: Finalizar la redacción de los artículos restantes y conectar todas las páginas en el índice principal.
 Tareas Técnicas:
-1. Actualizar `monitores-diseno.html` con contenido real sobre monitores.
-2. Actualizar `teclados-mecanicos.html` con contenido real sobre teclados.
-3. Actualizar `webcam-streaming.html` con contenido real sobre webcams.
-4. Asegurar que cada artículo tenga estructura semántica (H2, H3, p, ul) y CTAs funcionales.
+1. Actualizar `auriculares-cancelacion.html` con contenido real sobre auriculares con cancelación de ruido.
+2. Actualizar `sillas-ergonomicas.html` con contenido real sobre sillas ergonómicas.
+3. Actualizar `index.html` para asegurar que todos los enlaces del grid apunten a los archivos HTML correspondientes (laptops, monitores, teclados, webcam, auriculares, sillas).
+4. Verificar que la navegación sea fluida entre el Home y los Artículos.

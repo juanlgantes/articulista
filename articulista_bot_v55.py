@@ -4,6 +4,7 @@ import os
 import re
 import sys
 import shutil
+import select
 
 # --- CONFIGURACIÓN ---
 REPO_NAME = "juanlgantes/articulista"
@@ -109,8 +110,23 @@ def esperar_a_jules(session_id):
     log("\n❌ Timeout: La sesión no se completó en el tiempo previsto.")
     return False
 
-def obtener_git_hash():
-    return ejecutar(['git', 'rev-parse', 'HEAD'])
+# Función eliminada para simplificar: obtener_git_hash ya no es necesaria.
+
+def esperar_confirmacion(timeout_segundos=300):
+    """Espera a que el usuario presione ENTER o a que pasen X segundos (híbrido)."""
+    log(f"⏳ Pausa de seguridad: Presiona ENTER para saltar al siguiente ciclo o espera {timeout_segundos//60} min para auto-lanzamiento...")
+    # select.select espera a que haya datos en stdin (tecla presionada)
+    # Solo funciona correctamente en sistemas tipo Unix (Linux/WSL)
+    try:
+        rlist, _, _ = select.select([sys.stdin], [], [], timeout_segundos)
+        if rlist:
+            sys.stdin.readline() # Limpiar el buffer de entrada
+            log("⏩ Acción manual detectada. Continuando...")
+        else:
+            log("🤖 Tiempo agotado. Continuando automáticamente...")
+    except:
+        # Fallback por si select falla en algún entorno
+        time.sleep(10)
 
 def leer_trt_log():
     if os.path.exists("TRT_REFLECTION_LOG.md"):
@@ -128,6 +144,10 @@ def generar_mision_unificada(ciclo_actual):
     if os.path.exists("ORDEN_DEL_DIA.md") and os.path.getsize("ORDEN_DEL_DIA.md") > 0:
         fuente = "ORDEN_DEL_DIA.md"
         with open(fuente, "r", encoding="utf-8") as f: instruccion = f.read()
+        
+        # 1.1 Si el plan indica que hemos terminado, paramos.
+        if "COMPLETADO" in instruccion.upper():
+            return "SIGNAL_MISSION_COMPLETE"
     elif ciclo_actual == 1:
         fuente = "MISION.md"
         if os.path.exists(fuente):
@@ -176,6 +196,9 @@ def main():
 
         # 1. Generar Misión
         mision = generar_mision_unificada(ciclo)
+        if mision == "SIGNAL_MISSION_COMPLETE":
+            log("🏁 STATUS: COMPLETADO detectado en la Brújula. ¡Objetivo cumplido!")
+            break
         if mision == "FATAL_ERROR_NO_PLAN":
             log("🛑 ERROR CRÍTICO: ORDEN_DEL_DIA.md está vacío o no existe tras el ciclo anterior.")
             log("⚠️ El Worker anterior no hizo su trabajo de planificación.")
@@ -203,7 +226,8 @@ def main():
         # 5. Sincronizar (Solo si todo fue bien)
         sincronizar_git(f"Jules V55: Ciclo {ciclo} + Planificación")
         
-        input(f"\n⏸️ Ciclo {ciclo} terminado. Presiona ENTER para continuar al {ciclo + 1}...")
+        log(f"✅ Ciclo {ciclo} completado con éxito.")
+        esperar_confirmacion(300) # 5 minutos de pausa o ENTER
         ciclo += 1
 
 if __name__ == "__main__":

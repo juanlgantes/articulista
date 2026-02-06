@@ -111,5 +111,20 @@ The loop has optimized the agent's behavior from a "Command Executor" to a "Cont
     *   **Orchestration Logic**: The mix of `git push` (pre-flight), `Completed` polling, and `LF normalization` has moved the project from "Fragile/Manual" to "Stable/Headless".
     *   **Next Steps**: Maintain the current constraints. The bot is ready for full-scale production tasks.
 
+### 🟢 Round 13: The Mission Completion Sensor
+*   **Context**: The bot continued to launch new cycles even when `ORDEN_DEL_DIA.md` was marked as `COMPLETADO`.
+*   **Generate**: Implement a termination signal based on file content.
+*   **Select**: `articulista_bot_v55.py` now scans for the keyword `COMPLETADO` in the mission source. If found, it logs a success message and breaks the loop immediately.
+*   **Reflect (Graceful Termination)**:
+    *   **State-Driven Exit**: A headless bot must not only know how to work, but also when to stop. Relying on `MAX_CICLOS` is a safety net, but content-driven termination is the mark of a mature automation.
+
+### 🟢 Round 14: The Hybrid Wait (Human-in-the-Loop 2.0)
+*   **Context**: User requested a balance between manual control and total autonomy: proceed on ENTER or auto-timeout.
+*   **Generate**: Implement a non-blocking input wait using `select.select`.
+*   **Select**: `articulista_bot_v55.py` now pauses for 5 minutes between cycles. The user can press ENTER to skip the wait, or do nothing for a fully autonomous run.
+*   **Reflect (The Semi-Autonomous Sweet Spot)**:
+    *   **User Oversight**: While the bot is "headless," a 5-minute window allows the user to review the last cycle before the next one starts, without blocking progress if they are away.
+    *   **Determinism**: By using standard Unix polling (`select`), the bot remains robust and predictable in the WSL environment.
+
 ---
 *Generated via Internal Recursive Scan | 2026-02-06*

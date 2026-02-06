@@ -206,6 +206,9 @@ footer a {
 
 /* Article Page Styles */
 .article-header {
+    background-color: transparent;
+    color: var(--color-text-body);
+    padding: 0;
     margin-bottom: var(--spacing-lg);
 }
 

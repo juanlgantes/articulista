@@ -84,5 +84,13 @@ The loop has optimized the agent's behavior from a "Command Executor" to a "Cont
     *   **Normalization**: Code must be sanitized locally (LF) *before* being sent to the Cloud (Jules) to ensure the patch returned is compatible with the starting state.
     *   **Pre-Flight Sync**: Syncing Git *before* a task ensures the Cloud VM and Local Host share the exact same starting commit, minimizing merge conflicts.
 
+### 🟢 Round 10: The Orchestration Booster
+*   **Context**: Manual preparation (git sync, session pull, line normalization) was repetitive and prone to human error.
+*   **Generate**: Create `preparar_bot.sh` to automate pre-launch hygiene.
+*   **Select**: A bash script that performs: `git commit` (safety) -> `git checkout .` (reset) -> `git pull` (align) -> `jules pull --apply` (latest state) -> `Smart Resume Status`.
+*   **Reflect (Automation of Automation)**:
+    *   **The Launch Gap**: A robust bot (`v55.3`) still requires a clean launchpad. Orchestration scripts bridge the gap between "Stale Local Files" and "Ready for Jules".
+    *   **Diagnostics**: Providing the user with a "Resume vs Start" diagnosis *before* launching the heavy logic increases transparency and trust.
+
 ---
 *Generated via Internal Recursive Scan | 2026-02-06*

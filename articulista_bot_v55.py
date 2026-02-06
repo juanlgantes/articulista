@@ -25,6 +25,23 @@ def ejecutar(cmd_list):
         log(f"🔥 CRITICAL ERROR executing {cmd_list}: {e}")
         return ""
 
+def normalizar_lineas_lf():
+    """Convierte CRLF a LF en archivos de texto del proyecto para evitar errores de patch."""
+    log("🧹 Normalizando finales de línea (LF)...")
+    formatos = ('.html', '.css', '.js', '.md', '.py')
+    for root, dirs, files in os.walk(os.getcwd()):
+        if '.git' in dirs: dirs.remove('.git')
+        for file in files:
+            if file.endswith(formatos):
+                path = os.path.join(root, file)
+                try:
+                    with open(path, 'rb') as f: content = f.read()
+                    new_content = content.replace(b'\r\n', b'\n')
+                    if new_content != content:
+                        with open(path, 'wb') as f: f.write(new_content)
+                except Exception as e:
+                    log(f"⚠️ No se pudo normalizar {file}: {e}")
+
 def sincronizar_git(mensaje):
     """Sube cambios y ORDEN_DEL_DIA."""
     if not ejecutar(['git', 'status', '--porcelain']):
@@ -62,9 +79,8 @@ def esperar_a_jules(session_id):
                 log("🎉 Paquete completo recibido y aplicado.")
                 return True
             else:
-                log(f"⚠️ El pull falló o no trajo nada nuevo: {res}")
-                # A veces un pull puede no tener cambios si Jules no tocó nada, pero Completed es buena señal
-                return True 
+                log(f"❌ ERROR: El pull falló (conflicto o estado inconsistente): {res}")
+                return False 
         
         # 3. Mostrar progreso
         sys.stdout.write(f"\r⏳ Jules sigue trabajando... Tiempo transcurrido: {elapsed}s")
@@ -137,6 +153,10 @@ def main():
     while ciclo <= MAX_CICLOS:
         log(f"\n🎬 === CICLO {ciclo} ===")
         
+        # 0. Pre-Flight Consistency
+        normalizar_lineas_lf()
+        sincronizar_git(f"Pre-Flight Sync: Ciclo {ciclo}")
+
         # 1. Generar Misión
         mision = generar_mision_unificada(ciclo)
         if mision == "FATAL_ERROR_NO_PLAN":

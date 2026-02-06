@@ -75,5 +75,14 @@ The loop has optimized the agent's behavior from a "Command Executor" to a "Cont
     *   **The Source of Truth**: The `Status` column in the remote list is the only authoritative indicator of task finality.
     *   **Buffer Strategy**: Added a 30-second "Cool-down" post-completion to account for backend-to-frontend propagation delays.
 
+### 🟢 Round 9: The Environment Glue (Stabilization)
+*   **Context**: Application of `jules remote pull --apply` failed due to line-ending mismatches (CRLF vs LF) and local state drift.
+*   **Generate**: Implement a Pre-Flight Consistency Protocol.
+*   **Select**: `articulista_bot_v55.py` now includes an internal LF normalizer and a mandatory `git push` before every Jules session.
+*   **Reflect (Cross-OS Determinism)**:
+    *   **The Invisible Barrier**: Mixed OS ecosystems (Windows/WSL) introduce invisible byte differences (newline characters) that break text-patching algorithms. 
+    *   **Normalization**: Code must be sanitized locally (LF) *before* being sent to the Cloud (Jules) to ensure the patch returned is compatible with the starting state.
+    *   **Pre-Flight Sync**: Syncing Git *before* a task ensures the Cloud VM and Local Host share the exact same starting commit, minimizing merge conflicts.
+
 ---
 *Generated via Internal Recursive Scan | 2026-02-06*

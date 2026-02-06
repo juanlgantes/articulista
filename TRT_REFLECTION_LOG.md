@@ -66,5 +66,14 @@ The loop has optimized the agent's behavior from a "Command Executor" to a "Cont
 *   **Select**: Logic updated to check `ORDEN_DEL_DIA.md` existence *before* checking Cycle #1 condition.
 *   **Reflect (The Persistence of Memory)**: The agent's "First Cycle" is not necessarily the Project's "First Step". The filesystem state (`ORDEN_DEL_DIA`) is the only source of truth for time, not the variable `i=1`.
 
+### 🟢 Round 8: Completion Policing (Wait for it...)
+*   **Context**: User reported that `remote pull --apply` succeeded prematurely, resulting in incomplete work (stale files).
+*   **Generate**: Transition from "Pull-based Polling" to "Status-based Polling".
+*   **Select**: Updated `articulista_bot_v55.py` to check `jules remote list --session` for the "Completed" status string before attempting the final pull.
+*   **Reflect (The Synchronization Gap)**:
+    *   **The Pull Trap**: Just because a patch *can* be pulled doesn't mean the task *is* done. Multiple atomic patches can exist during a long session.
+    *   **The Source of Truth**: The `Status` column in the remote list is the only authoritative indicator of task finality.
+    *   **Buffer Strategy**: Added a 30-second "Cool-down" post-completion to account for backend-to-frontend propagation delays.
+
 ---
 *Generated via Internal Recursive Scan | 2026-02-06*

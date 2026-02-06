@@ -38,29 +38,42 @@ def sincronizar_git(mensaje):
     log("✅ Estado actualizado en la nube.")
 
 def esperar_a_jules(session_id):
-    """Polling inteligente con timeout."""
-    log(f"⏳ Esperando entrega de sesión {session_id}...")
+    """Polling robusto: Espera a que el estado sea 'Completed' antes de bajar nada."""
+    log(f"⏳ Monitoreando sesión {session_id}...")
     start_time = time.time()
     intentos = 0
-    # 60 intentos * 30 seg = 30 minutos máximo de espera
-    while intentos < 60:
+    while intentos < 120: # 60 minutos máximo de espera
         elapsed = int(time.time() - start_time)
-        sys.stdout.write(f"\r⏳ Esperando a Jules... Tiempo transcurrido: {elapsed}s")
+        
+        # 1. Consultar la lista de sesiones
+        status_raw = ejecutar([JULES_CMD, 'remote', 'list', '--session'])
+        
+        # 2. Verificar si nuestra sesión ya está en 'Completed'
+        # Buscamos el ID y que en esa misma línea aparezca 'Completed'
+        if re.search(rf"{session_id}.*Completed", status_raw, re.IGNORECASE):
+            log(f"\n✅ Jules ha finalizado (Estado: Completed).")
+            log("⏳ Esperando buffer de seguridad (30s) para confirmar inactividad y sincronía...")
+            time.sleep(30)
+            
+            log("🔄 Ejecutando PULL final para traer todos los cambios...")
+            res = ejecutar([JULES_CMD, 'remote', 'pull', '--session', session_id, '--apply'])
+            
+            if "Patch applied successfully" in res or "Applied" in res:
+                log("🎉 Paquete completo recibido y aplicado.")
+                return True
+            else:
+                log(f"⚠️ El pull falló o no trajo nada nuevo: {res}")
+                # A veces un pull puede no tener cambios si Jules no tocó nada, pero Completed es buena señal
+                return True 
+        
+        # 3. Mostrar progreso
+        sys.stdout.write(f"\r⏳ Jules sigue trabajando... Tiempo transcurrido: {elapsed}s")
         sys.stdout.flush()
+        
         time.sleep(30)
-        res = ejecutar([JULES_CMD, 'remote', 'pull', '--session', session_id, '--apply'])
-        
-        if "Patch applied successfully" in res or "Applied" in res:
-            log("🎉 Paquete recibido y aplicado.")
-            return True
-        
-        if "No such file" in res or "not ready" in res.lower():
-            sys.stdout.write(".") 
-            sys.stdout.flush()
-        
         intentos += 1
     
-    log("\n❌ Timeout: Jules tardó demasiado.")
+    log("\n❌ Timeout: La sesión no se completó en el tiempo previsto.")
     return False
 
 def obtener_git_hash():

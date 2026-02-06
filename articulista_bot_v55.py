@@ -41,6 +41,7 @@ def esperar_a_jules(session_id):
     """Polling inteligente con timeout."""
     log(f"⏳ Esperando entrega de sesión {session_id}...")
     start_time = time.time()
+    intentos = 0
     # 60 intentos * 30 seg = 30 minutos máximo de espera
     while intentos < 60:
         elapsed = int(time.time() - start_time)
@@ -103,7 +104,9 @@ def generar_mision_unificada(ciclo_actual):
         "   - Contenido: Instrucciones técnicas precisas para el SIGUIENTE ciclo (lo que falta por hacer).\n"
         "   - Si el proyecto terminó, escribe 'STATUS: COMPLETADO'.\n"
         "   - ⚠️ IMPORTANTE: Si no escribes este archivo con el plan futuro, el ciclo se romperá.\n\n"
-        f"[Contexto Histórico / Errores Previos]\n{leer_trt_log()}"
+        "3. CONTEXTO HISTÓRICO:\n"
+        "   - Antes de empezar, LEE el archivo 'TRT_REFLECTION_LOG.md'.\n"
+        "   - Contiene tus errores pasados y tu constitución de calidad. OBEDÉCELOS."
     )
     return prompt
 

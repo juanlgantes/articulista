@@ -203,3 +203,52 @@ footer a {
     position: absolute;
     width: 1px;
 }
+
+/* Article Page Styles */
+.article-header {
+    margin-bottom: var(--spacing-lg);
+}
+
+.article-header h1 {
+    font-size: 2.5rem;
+    margin-bottom: var(--spacing-sm);
+}
+
+.article-header .meta {
+    color: #666;
+    font-style: italic;
+}
+
+.article-body p, .article-body ul {
+    margin-bottom: 1.5rem;
+}
+
+.article-body ul {
+    padding-left: 2rem;
+}
+
+.article-body h2 {
+    margin-top: var(--spacing-lg);
+}
+
+.cta-box {
+    background-color: var(--color-secondary);
+    padding: var(--spacing-lg);
+    text-align: center;
+    margin: var(--spacing-lg) 0;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+}
+
+.cta-box h3 {
+    margin-bottom: var(--spacing-md);
+}
+
+.cta-box p {
+    margin-bottom: 1.5rem;
+}
+
+.cta-box .btn {
+    padding: var(--spacing-md) var(--spacing-lg);
+    font-size: 1.2rem;
+}

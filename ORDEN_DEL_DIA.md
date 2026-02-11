@@ -1,12 +1,7 @@
-# ORDEN DEL DÍA
-
-STATUS: COMPLETADO
-
 ## Resumen de Cambios
-- Implementado menú de navegación móvil (Hamburguesa) con JavaScript y CSS.
-- Actualizados todos los archivos HTML para incluir el botón de menú y el script.
-- Corregido bug donde el botón de menú aparecía erróneamente en el footer.
-- Verificada la funcionalidad en viewport móvil (375x667) mediante pruebas automatizadas.
+- [x] Optimizado `<title>` y `<meta description>` en `index.html`.
+- [x] Generado `sitemap.xml` incluyendo todas las páginas.
+- [x] Creado `robots.txt` para gestión de crawlers.
 
 --- PROTOCOLO DE CALIDAD (SINGLE TAP) ---
 1. EJECUCIÓN: Implementa SOLAMENTE el siguiente paso lógico. NO intentes terminar todo el proyecto de golpe.
@@ -22,13 +17,12 @@ STATUS: COMPLETADO
    - Contiene tus errores pasados y tu constitución de calidad. OBEDÉCELOS.
 
 ## Instrucciones para el Siguiente Ciclo
-ID: 003
-Título: Integración de Imágenes en Grid y Artículos
-Prioridad: Alta
-Descripción: El sitio actualmente carece de imágenes en la grid de inicio y en los artículos, lo cual afecta la retención y el diseño visual.
+ID: 007
+Título: Performance Audit & Minification
+Prioridad: Media
+Descripción: Para mantener el score de Lighthouse > 95, debemos asegurar que el CSS y JS estén optimizados.
 Tareas Técnicas:
-1. Revisar `index.html` e insertar etiquetas `<img>` dentro de cada `.article-card`.
-   - Usar imágenes de placeholder (ej: `via.placeholder.com` o SVGs locales) si no existen assets.
-   - Asegurar atributos `alt` descriptivos para SEO.
-2. Actualizar `css/style.css` para estilizar las imágenes de las tarjetas (object-fit, aspect-ratio).
-3. Verificar que las imágenes no rompan el layout en móvil.
+1. Auditar tamaño de imágenes (placeholders).
+2. Minificar `style.css` (manual o script simple).
+3. Verificar carga diferida (lazy loading) en todas las imágenes.
+4. Ejecutar validación final de HTML W3C.

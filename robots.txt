@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /css/
+Disallow: /js/
+Disallow: /img/
+Disallow: /post-template.html
+
+Sitemap: https://articulista.example.com/sitemap.xml

@@ -1,28 +1,24 @@
-## Resumen de Cambios
-- [x] Optimizado `<title>` y `<meta description>` en `index.html`.
-- [x] Generado `sitemap.xml` incluyendo todas las páginas.
-- [x] Creado `robots.txt` para gestión de crawlers.
+ID: 008
+Título: Inicialización de Infraestructura de Calidad (Agent-QA)
+Prioridad: Alta (Bloqueante para nuevos features)
+Contexto: Transición al modelo "Agentic Engineering Pipeline". El estado actual carece de pruebas automatizadas persistentes y estándares de linting.
 
---- PROTOCOLO DE CALIDAD (SINGLE TAP) ---
-1. EJECUCIÓN: Implementa SOLAMENTE el siguiente paso lógico. NO intentes terminar todo el proyecto de golpe.
-   - PRINCIPIO: Calidad > Cantidad.
-   - PRINCIPIO: Cero Alucinaciones.
-2. PLANIFICACIÓN OBLIGATORIA: Al terminar, DEBES escribir/sobrescribir el archivo 'ORDEN_DEL_DIA.md'.
-   - Contenido: Instrucciones técnicas precisas para el SIGUIENTE ciclo (lo que falta por hacer).
-   - Si el proyecto terminó, escribe 'STATUS: COMPLETADO'.
-   - ⚠️ IMPORTANTE: Si no escribes este archivo con el plan futuro, el ciclo se romperá.
+Descripción:
+Para cumplir con la nueva arquitectura de agentes (The AI Squad), debemos establecer la base tecnológica para el Agent-QA y el Agent-Auditor. No se pueden desarrollar nuevas funcionalidades hasta que el pipeline de calidad esté operativo.
 
-3. CONTEXTO HISTÓRICO:
-   - Antes de empezar, LEE el archivo 'TRT_REFLECTION_LOG.md'.
-   - Contiene tus errores pasados y tu constitución de calidad. OBEDÉCELOS.
-
-## Instrucciones para el Siguiente Ciclo
-ID: 007
-Título: Performance Audit & Minification
-Prioridad: Media
-Descripción: Para mantener el score de Lighthouse > 95, debemos asegurar que el CSS y JS estén optimizados.
 Tareas Técnicas:
-1. Auditar tamaño de imágenes (placeholders).
-2. Minificar `style.css` (manual o script simple).
-3. Verificar carga diferida (lazy loading) en todas las imágenes.
-4. Ejecutar validación final de HTML W3C.
+1. **Documentación del Pipeline:**
+   - Crear `docs/AGENTIC_PIPELINE.md` con la especificación completa del flujo de trabajo (Roles, Etapas, DoD).
+2. **Infraestructura de Pruebas (Agent-QA):**
+   - Configurar un framework de pruebas E2E persistente (Playwright) en la carpeta `tests/` (no `verification/`).
+   - Crear un script de ejecución `npm test` o `python3 -m pytest` (según stack) que ejecute la suite.
+3. **Estándares de Código (Agent-Auditor):**
+   - Implementar configuración básica de Linting para HTML, CSS y JS (e.g., `.editorconfig`, ESLint, o scripts de validación).
+4. **Primer Test Suite:**
+   - Migrar las verificaciones actuales (Home, Privacy Policy) a tests formales que validen el "Happy Path".
+
+---
+NOTAS DEL AGENTE ANTERIOR:
+- El proyecto cumple con los requisitos de performance (Lighthouse > 95).
+- Se ha realizado una auditoría de imágenes y SEO.
+- El código fuente CSS está en `css/style.original.css`.

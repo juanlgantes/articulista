@@ -146,7 +146,9 @@ def generar_mision_unificada(ciclo_actual):
         with open(fuente, "r", encoding="utf-8") as f: instruccion = f.read()
         
         # 1.1 Si el plan indica que hemos terminado, paramos.
-        if "COMPLETADO" in instruccion.upper():
+        # Usamos regex para buscar 'STATUS: COMPLETADO' al inicio de una línea,
+        # evitando falsos positivos dentro de las instrucciones del protocolo.
+        if re.search(r"^STATUS: COMPLETADO", instruccion, re.MULTILINE | re.IGNORECASE):
             return "SIGNAL_MISSION_COMPLETE"
     elif ciclo_actual == 1:
         fuente = "MISION.md"
